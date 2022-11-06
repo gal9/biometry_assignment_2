@@ -1,0 +1,1 @@
+minNeighbours: 3; scaleFactor: 1.1 => 0.23105535034288063
