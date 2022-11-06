@@ -64,8 +64,8 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
         recalls.append(recall)
 
     with open(f"results/MN{minNeighbours}_SF{scaleFactor}_precisionn_recall.txt", "w") as pr:
-        pr.write(", ".join(precisionns) + "\n")
-        pr.write(", ".join(recalls))
+        pr.write(str(precisionns) + "\n")
+        pr.write(str(recalls))
 
     print()
 
