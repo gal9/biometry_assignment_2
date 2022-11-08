@@ -1,13 +1,15 @@
-from src.metrics import jv_iou
-import os
+import torch
 import cv2 as cv
+import os
 import numpy as np
 from matplotlib import pyplot as plt
 
+from src.metrics import yolo_iou
 
-def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
-    image_c = 0
+
+def pr_score(model):
     prediction_count = 0
+    image_c = 0
     iou_s = []
     iou_avg = 0
 
@@ -19,7 +21,7 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
             image_code = image[:-4]
 
             # Get a list of iou-s for all predicted boxes
-            iou = jv_iou(image_code, right_cascade, left_cascade, minNeighbours, scaleFactor)
+            iou = yolo_iou(image_code, model)
 
             prediction_count += len(iou)
             iou_s += iou
@@ -35,7 +37,7 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
                 print(f"sth wrong on {image_code}")
                 exit(1)
 
-            print(f"image {image_c}/500", end="\r")
+            print(f"socre: {iou}; {image_c}/500", end="\r")
 
     # Loop through thresholds and save precisionn and recall
     precisions = []
@@ -57,7 +59,7 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
         precisions.append(precision)
         recalls.append(recall)
 
-    with open(f"results/MN{minNeighbours}_SF{scaleFactor}_precisionn_recall.txt", "w") as pr:
+    with open("results/yolo_precisionn_recall.txt", "w") as pr:
         pr.write(str(precisions) + "\n")
         pr.write(str(recalls))
 
@@ -71,14 +73,14 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
         avg_recall = sum(recalls)/len(recalls)
         avg_precision = sum(precisions)/len(precisions)
 
-        f.write(f"minNeighbours: {minNeighbours}; scaleFactor: {scaleFactor} => AvgIoU: {iou_avg}; avg_recall: {avg_recall}; avg_precision: {avg_precision}\n") # noqa
-    print(f"minNeighbours: {minNeighbours}; scaleFactor: {scaleFactor} => AvgIoU: {iou_avg}; avg_recall: {avg_recall}; avg_precision: {avg_precision}\n") # noqa
+        f.write(f"yolo => AvgIoU: {iou_avg}; avg_recall: {avg_recall}; avg_precision: {avg_precision}\n") # noqa
+    print(f"yolo => AvgIoU: {iou_avg}; avg_recall: {avg_recall}; avg_precision: {avg_precision}\n") # noqa
 
     plt.plot(recalls, precisions)
-    plt.savefig(f"results/MN{minNeighbours}_SF{scaleFactor}.png")
+    plt.savefig("results/yolo.png")
 
 
-def mark_image(image_code, minNeighbours=3, scaleFactor=1.1):
+def mark_image(image_code):
     image = cv.imread(f"data/test/{image_code}.png")
     img_height = image.shape[0]
     img_width = image.shape[1]
@@ -90,21 +92,15 @@ def mark_image(image_code, minNeighbours=3, scaleFactor=1.1):
         box_x = round(float(line[1])*img_width-(box_width/2))
         box_y = round(float(line[2])*img_height-(box_height/2))
 
-    right_cascade = cv.CascadeClassifier()
-    left_cascade = cv.CascadeClassifier()
+    model = torch.hub.load('./yolov5/yolov5', 'custom', path='./yolo5s.pt', source="local")
 
-    right_cascade.load("haarcascade_mcs_rightear.xml")
-    left_cascade.load("haarcascade_mcs_leftear.xml")
+    img_path = f"data/test/{image_code}.png"
 
-    rights = right_cascade.detectMultiScale(image, minNeighbors=minNeighbours, scaleFactor=scaleFactor)
-    lefts = left_cascade.detectMultiScale(image, minNeighbors=minNeighbours, scaleFactor=scaleFactor)
+    results = model(img_path).xyxy[0].numpy()
 
-    for left in lefts:
-        image = cv.rectangle(image, (left[0], left[1]+left[3]), (left[0]+left[2], left[1]), (255, 0, 0), 2)
-
-    for right in rights:
-        image = cv.rectangle(image, (right[0], right[1]+right[3]), (right[0]+right[2], right[1]), (0, 255, 0), 2)
+    for box in results:
+        image = cv.rectangle(image, (round(box[0]), round(box[1])), (round(box[2]), round(box[3])), (255, 0, 0), 2)
 
     image = cv.rectangle(image, (box_x, box_y+box_height), (box_x+box_width, box_y), (0, 0, 255), 2)
 
-    cv.imwrite(f"{image_code}_marked.png", image)
+    cv.imwrite(f"{image_code}_marked_yolo.png", image)

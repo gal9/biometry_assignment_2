@@ -24,14 +24,11 @@ def _iou(box1_x, box1_y, box1_width, box1_height, box2_x, box2_y, box2_width, bo
     return ai/au
 
 
-def iou(lefts, rights, true_x, true_y, true_width, true_height):
+def iou(boxes, true_x, true_y, true_width, true_height):
     r = []
 
-    for right in rights:
-        r.append(_iou(true_x, true_y, true_width, true_height, right[0], right[1], right[2], right[3]))
-
-    for left in lefts:
-        r.append(_iou(true_x, true_y, true_width, true_height, left[0], left[1], left[2], left[3]))
+    for box in boxes:
+        r.append(_iou(true_x, true_y, true_width, true_height, box[0], box[1], box[2], box[3]))
 
     return r
 
@@ -51,7 +48,43 @@ def jv_iou(image_code, right_cascade, left_cascade, minNeighbours=3, scaleFactor
     rights = right_cascade.detectMultiScale(image, minNeighbors=minNeighbours, scaleFactor=scaleFactor)
     lefts = left_cascade.detectMultiScale(image, minNeighbors=minNeighbours, scaleFactor=scaleFactor)
 
-    r_s = iou(lefts, rights, box_x, box_y, box_width, box_height)
+    boxes = []
+    if (len(rights) > 0):
+        boxes += list(rights)
+    if (len(lefts) > 0):
+        boxes += list(lefts)
+
+    r_s = iou(boxes, box_x, box_y, box_width, box_height)
+
+    return r_s
+
+
+def iou_for_yolo(boxes, true_x, true_y, true_width, true_height):
+    r = []
+
+    for box in boxes:
+        # print([true_x, true_y, true_width, true_height])
+        # print(box)
+        r.append(_iou(true_x, true_y, true_width, true_height, box[0], box[1], box[2]-box[0], box[3]-box[1]))
+
+    return r
+
+
+def yolo_iou(image_code, model):
+    image = cv.imread(f"data/test/{image_code}.png")
+    img_height = image.shape[0]
+    img_width = image.shape[1]
+
+    with open(f"data/test/{image_code}.txt") as f:
+        line = f.read().split()
+        box_width = round(float(line[3])*img_width)
+        box_height = round(float(line[4])*img_height)
+        box_x = round(float(line[1])*img_width-(box_width/2))
+        box_y = round(float(line[2])*img_height-(box_height/2))
+
+    results = model(f"data/test/{image_code}.png").xyxy[0].numpy()
+
+    r_s = iou_for_yolo(results, box_x, box_y, box_width, box_height)
 
     return r_s
 
