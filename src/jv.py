@@ -10,6 +10,7 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
     prediction_count = 0
     iou_s = []
     iou_avg = 0
+    without = 0
 
     # Loop through all the samples
     for image in os.listdir("data/test"):
@@ -26,6 +27,7 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
 
             if (len(iou) == 0):
                 iou = [0]
+                without += 1
 
             img_avg_iou = sum(iou)/len(iou)
             iou_avg += img_avg_iou
@@ -36,11 +38,13 @@ def pr_score(right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
                 exit(1)
 
             print(f"image {image_c}/500", end="\r")
-
+    print(prediction_count)
+    print(image_c)
+    print(f"without: {without}")
     # Loop through thresholds and save precisionn and recall
     precisions = []
     recalls = []
-    for threshold in np.arange(0, 1.1, 0.1):
+    for threshold in np.arange(0, 1, 0.01):
         # For each threshold TP
         TP = 0
 

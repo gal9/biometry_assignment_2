@@ -34,7 +34,7 @@ def iou(boxes, true_x, true_y, true_width, true_height):
 
 
 def jv_iou(image_code, right_cascade, left_cascade, minNeighbours=3, scaleFactor=1.1):
-    image = cv.imread(f"data/test/{image_code}.png")
+    image = cv.imread(f"data/test/{image_code}.png", cv.IMREAD_GRAYSCALE)
     img_height = image.shape[0]
     img_width = image.shape[1]
 
